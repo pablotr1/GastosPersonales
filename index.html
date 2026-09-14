@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis gastos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,600&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#11131A;
+    --card:#191C25;
+    --sunken:#0E1016;
+    --ink:#F1F2F7;
+    --muted:#7E839B;
+    --line:#2A2E3B;
+    --accent:#FF6B4A;
+    --accent-soft:#3A231C;
+    --radius:8px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Work Sans',sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background-image: linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px);
+    background-size: 100% 28px;
+  }
+  .wrap{max-width:620px;margin:0 auto;padding:34px 18px 90px;}
+
+  header.top{margin-bottom:2px;}
+  h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:700;font-style:italic;
+    font-size:26px;margin:0 0 2px 0;
+    color:#FFD24D;
+    letter-spacing:-0.01em;
+  }
+  .today-sub{font-size:12.5px;color:var(--muted);text-transform:capitalize;}
+
+  button{font-family:'Work Sans',sans-serif;cursor:pointer;border:none;}
+  .status-line{font-size:12px;color:var(--muted);margin:6px 0 18px 0;min-height:14px;}
+  .status-line.error{color:var(--accent);}
+
+  .receipt{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);}
+  .receipt + .receipt{margin-top:20px;}
+  .receipt-body{padding:20px 22px;}
+  .receipt-edge{
+    height:9px;
+    background:
+      linear-gradient(135deg, var(--bg) 6px, transparent 0) 0 -3px / 12px 12px,
+      linear-gradient(-135deg, var(--bg) 6px, transparent 0) 0 -3px / 12px 12px;
+    background-color:var(--card);
+  }
+
+  .section-title{
+    font-family:'Source Serif 4',serif;font-style:italic;font-weight:700;
+    font-size:16.5px;margin:0 0 14px 0;
+  }
+  .section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+  .section-head .section-title{margin:0;}
+
+  .month-nav{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--muted);}
+  .month-nav button{background:none;border:none;color:var(--ink);font-size:15px;cursor:pointer;padding:2px 3px;font-family:'IBM Plex Mono',monospace;}
+  .month-nav button:hover{color:var(--accent);}
+  .month-label{min-width:88px;text-align:center;text-transform:capitalize;}
+
+  .total-block{text-align:left;}
+  .total-label{font-size:12.5px;color:var(--muted);margin-bottom:2px;}
+  .total-amount{font-family:'Source Serif 4',serif;font-weight:700;font-size:42px;line-height:1;color:var(--accent);}
+  .total-sub{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin-top:6px;}
+
+  .bar-row{display:grid;grid-template-columns:100px 1fr 72px;align-items:center;gap:10px;padding:6px 0;font-size:13px;}
+  .bar-row + .bar-row{border-top:1px dashed var(--line);}
+  .bar-cat-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;}
+  .bar-track{position:relative;height:7px;background:var(--sunken);border-radius:999px;overflow:hidden;}
+  .bar-fill{position:absolute;top:0;left:0;bottom:0;border-radius:999px;}
+  .bar-amount{font-family:'IBM Plex Mono',monospace;text-align:right;font-size:12.5px;color:var(--ink);}
+  .empty-state{color:var(--muted);font-size:13.5px;padding:6px 0;}
+  .loading{color:var(--muted);font-size:13.5px;padding:8px 0;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  input[type=text],input[type=number]{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;
+    font-family:'Work Sans',sans-serif;font-size:14px;background:var(--sunken);color:var(--ink);
+  }
+  input[type=number]{font-family:'IBM Plex Mono',monospace;}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .amount-field{position:relative;}
+  .amount-field .cur{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:14px;pointer-events:none;}
+  .amount-field input{padding-left:26px;}
+
+  .today-pill{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);
+    background:var(--sunken);border:1px solid var(--line);
+    padding:9px 12px;border-radius:7px;
+  }
+  .today-pill strong{color:var(--ink);font-weight:600;}
+
+  .chip-row{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{padding:6px 12px;border-radius:5px;font-size:12.5px;font-weight:700;border:1.5px solid transparent;background:var(--sunken);color:var(--muted);}
+  .chip.active{box-shadow:inset 0 0 0 1.5px currentColor;}
+
+  .add-btn{width:100%;background:var(--accent);color:#1A0D08;padding:12px;border-radius:7px;font-size:14.5px;font-weight:700;margin-top:4px;}
+  .add-btn:hover{background:#FF8465;}
+  .add-btn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;}
+
+  .count-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+  .entry{display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px dashed var(--line);}
+  .entry:first-child{border-top:none;}
+  .entry-cat-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+  .entry-main{flex:1;min-width:0;}
+  .entry-cat{font-size:13.5px;font-weight:600;}
+  .entry-meta{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .entry-meta .note{font-style:italic;}
+  .entry-amount{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14.5px;flex:0 0 auto;color:var(--accent);}
+  .entry-del{background:none;color:var(--line);font-size:15px;flex:0 0 auto;padding:2px 4px;line-height:1;}
+  .entry-del:hover{color:var(--accent);}
+
+  .inline-toggle{background:none;color:var(--muted);font-size:12px;text-decoration:underline;text-decoration-color:var(--line);padding:0;}
+  .inline-toggle:hover{color:var(--accent);}
+  .manage-panel{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);}
+  .manage-panel.open{display:block;}
+  .tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px;}
+  .tag{display:inline-flex;align-items:center;gap:7px;padding:5px 6px 5px 11px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--sunken);border:1px solid var(--line);}
+  .tag-remove{background:none;color:var(--muted);opacity:.7;font-size:11px;padding:0 3px;line-height:1;}
+  .tag-remove:hover{opacity:1;color:var(--accent);}
+  .add-row{display:flex;gap:8px;}
+  .add-row input{flex:1;}
+  .add-row-btn{background:var(--ink);color:var(--sunken);padding:9px 14px;border-radius:7px;font-size:13px;font-weight:700;white-space:nowrap;}
+  .add-row-btn:hover{background:var(--accent);color:#1A0D08;}
+
+  .reset-btn{background:none;color:var(--muted);font-size:12.5px;text-decoration:underline;text-decoration-color:var(--line);padding:0;}
+  .reset-btn:hover{color:var(--accent);}
+  .config-note{font-size:11.5px;color:var(--muted);line-height:1.5;background:var(--sunken);border:1px solid var(--line);padding:10px 12px;border-radius:7px;margin-top:12px;}
+
+  .chart-legend{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-bottom:12px;}
+  .chart-svg{width:100%;height:auto;display:block;}
+  .chart-label{fill:var(--muted);font-size:10px;font-family:'IBM Plex Mono',monospace;}
+  .chart-val{font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;}
+
+  @media (max-width:480px){
+    .total-amount{font-size:34px;}
+    .bar-row{grid-template-columns:78px 1fr 62px;}
+    .entry-meta{font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Mis gastos</h1>
+    <p class="today-sub" id="todaySub">—</p>
+  </header>
+  <p class="status-line" id="statusLine">Cargando...</p>
+
+  <!-- 1. REGISTRAR GASTO -->
+  <div class="receipt">
+    <div class="receipt-body">
+      <p class="section-title">Registrar gasto</p>
+
+      <div class="field">
+        <label>Cantidad</label>
+        <div class="amount-field">
+          <span class="cur">$</span>
+          <input type="number" id="amountInput" placeholder="0" min="0" step="1">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Categoría</label>
+        <div class="chip-row" id="categoryPicker"></div>
+      </div>
+
+      <div class="field" id="personField" style="display:none;">
+        <label>¿Quién gastó?</label>
+        <div class="chip-row" id="personPicker"></div>
+      </div>
+
+      <div class="field">
+        <label>Fecha</label>
+        <div class="today-pill" id="todayPill">📅 <strong>Hoy</strong></div>
+      </div>
+
+      <div class="field">
+        <label>Nota (opcional)</label>
+        <input type="text" id="noteInput" placeholder="Ej. supermercado...">
+      </div>
+
+      <button class="add-btn" id="addBtn">Agregar gasto</button>
+    </div>
+  </div>
+
+  <!-- 2. GASTO POR MES -->
+  <div class="receipt">
+    <div class="receipt-body total-block">
+      <div class="section-head">
+        <div class="total-label">gastado este mes</div>
+        <div class="month-nav">
+          <button id="prevMonth" title="Mes anterior">‹</button>
+          <span class="month-label" id="monthLabel">—</span>
+          <button id="nextMonth" title="Mes siguiente">›</button>
+        </div>
+      </div>
+      <div class="total-amount" id="totalAmount">$0</div>
+      <div class="total-sub" id="totalSub"></div>
+    </div>
+    <div class="receipt-edge"></div>
+  </div>
+
+  <!-- 3. POR CATEGORÍA -->
+  <div class="receipt">
+    <div class="receipt-body">
+      <p class="section-title">Por categoría</p>
+      <div id="categoryBreakdown"><div class="loading">Cargando...</div></div>
+
+      <div style="margin-top:12px;">
+        <button class="inline-toggle" id="catManageToggle">Editar categorías</button>
+      </div>
+      <div class="manage-panel" id="catManagePanel">
+        <div class="tag-list" id="categoryTagList"></div>
+        <div class="add-row">
+          <input type="text" id="newCategoryInput" placeholder="Nueva categoría">
+          <button class="add-row-btn" id="addCategoryBtn">Agregar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POR PERSONA (solo si hay más de una) -->
+  <div class="receipt" id="peopleCard" style="display:none;">
+    <div class="receipt-body">
+      <p class="section-title">Por persona</p>
+      <div id="peopleBreakdown"></div>
+    </div>
+  </div>
+
+  <!-- 4. GASTOS POR QUINCENA -->
+  <div class="receipt">
+    <div class="receipt-body">
+      <p class="section-title">Gastos por quincena</p>
+      <div id="quincenaChart"><div class="loading">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- 5. HISTÓRICO COMPLETO -->
+  <div class="receipt">
+    <div class="receipt-body">
+      <div class="section-head">
+        <p class="section-title">Histórico completo</p>
+        <span class="count-label" id="countLabel"></span>
+      </div>
+      <div id="historyList"><div class="loading">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- AJUSTES -->
+  <div class="receipt">
+    <div class="receipt-body">
+      <button class="inline-toggle" id="settingsToggleBtn">Ajustes (personas, datos)</button>
+      <div class="manage-panel" id="settingsPanel">
+        <div class="tag-list" id="peopleTagList"></div>
+        <div class="add-row">
+          <input type="text" id="newPersonInput" placeholder="Nombre de la persona">
+          <button class="add-row-btn" id="addPersonBtn">Agregar</button>
+        </div>
+        <button class="reset-btn" id="resetBtn" style="margin-top:16px;">Borrar todos los registros y ajustes</button>
+        <div class="config-note">
+          Los datos se guardan en tu propio bin de JSONBin.io. Si algo no carga, revisa que JSONBIN_BIN_ID y JSONBIN_API_KEY estén bien puestos al inicio del código.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURACIÓN DE JSONBIN.IO
+   Sustituye estos dos valores por los que te dio tu cuenta.
+   ========================================================= */
+const JSONBIN_BIN_ID = '6aa84d1dac6210605accf309';
+const JSONBIN_API_KEY = '$2a$10$0F7DfN4Nr14Hd6n0vAf5hu114cujRy4hydn4w8CtacFgEPu9pqT16';
+/* ========================================================= */
+
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID;
+
+const DEFAULT_CATEGORIES = ['Comida','Transporte','Renta','Entretenimiento','Salud','Otros'];
+const PALETTE = [
+  {fg:'#FF6B6B', bg:'#3A1F22'},
+  {fg:'#FFB84D', bg:'#3A2B18'},
+  {fg:'#4DE0A8', bg:'#173A2E'},
+  {fg:'#4DB8FF', bg:'#17283A'},
+  {fg:'#C48DFF', bg:'#2A1F3A'},
+  {fg:'#E0E24D', bg:'#2E3017'},
+  {fg:'#FF7AC6', bg:'#3A1F2E'},
+  {fg:'#FFD24D', bg:'#3A2F17'}
+];
+
+let state = { people: ['Yo'], categories: [...DEFAULT_CATEGORIES], entries: [] };
+let selectedPerson = state.people[0];
+let selectedCategory = state.categories[0];
+let currentMonthKey = new Date().toISOString().slice(0,7);
+const todayStr = new Date().toISOString().slice(0,10);
+
+const fmt = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-MX');
+const fmtDate = (iso) => {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('es-MX', {day:'numeric', month:'short'});
+};
+
+function hashStr(str){ let h=0; for (let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; } return h; }
+function colorFor(name){ return PALETTE[hashStr(name) % PALETTE.length]; }
+
+function setStatus(text, isError){
+  const el = document.getElementById('statusLine');
+  el.textContent = text || '';
+  el.classList.toggle('error', !!isError);
+}
+
+function monthLabel(key){
+  const [y,m] = key.split('-');
+  const d = new Date(Number(y), Number(m)-1, 1);
+  return d.toLocaleDateString('es-MX', {month:'long', year:'numeric'});
+}
+
+function entriesForMonth(key){ return state.entries.filter(e => e.date.slice(0,7) === key); }
+
+function quincenaKey(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const q = d<=15 ? 'Q1' : 'Q2';
+  return `${y}-${String(m).padStart(2,'0')}-${q}`;
+}
+function quincenaLabel(key){
+  const [y,m,q] = key.split('-');
+  const monthDate = new Date(Number(y), Number(m)-1, 1);
+  const monthShort = monthDate.toLocaleDateString('es-MX',{month:'short'}).replace('.','');
+  if (q === 'Q1') return `1-15 ${monthShort}`;
+  const lastDay = new Date(Number(y), Number(m), 0).getDate();
+  return `16-${lastDay} ${monthShort}`;
+}
+
+async function loadAll(){
+  if (JSONBIN_BIN_ID.startsWith('PON_AQUI') || JSONBIN_API_KEY.startsWith('PON_AQUI')){
+    setStatus('Falta configurar JSONBIN_BIN_ID y JSONBIN_API_KEY en el código.', true);
+    render();
+    return;
+  }
+  try{
+    setStatus('Cargando...');
+    const res = await fetch(JSONBIN_BASE + '/latest', { headers: { 'X-Master-Key': JSONBIN_API_KEY } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const record = data.record || {};
+    state.people = Array.isArray(record.people) && record.people.length ? record.people : ['Yo'];
+    state.categories = Array.isArray(record.categories) && record.categories.length ? record.categories : [...DEFAULT_CATEGORIES];
+    state.entries = Array.isArray(record.entries) ? record.entries : [];
+    selectedPerson = state.people[0];
+    selectedCategory = state.categories[0];
+    setStatus('');
+  } catch(err){
+    setStatus('No se pudo cargar (' + err.message + '). Revisa tu conexión o tu configuración.', true);
+  }
+  render();
+}
+
+async function persistAll(){
+  if (JSONBIN_BIN_ID.startsWith('PON_AQUI') || JSONBIN_API_KEY.startsWith('PON_AQUI')){
+    setStatus('Falta configurar JSONBIN_BIN_ID y JSONBIN_API_KEY en el código.', true);
+    return;
+  }
+  setStatus('Guardando...');
+  try{
+    const res = await fetch(JSONBIN_BASE, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
+      body: JSON.stringify(state)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setStatus('Guardado.');
+  } catch(err){
+    setStatus('No se pudo guardar (' + err.message + ').', true);
+  }
+}
+
+function renderToday(){
+  document.getElementById('todaySub').textContent =
+    new Date(todayStr + 'T00:00:00').toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
+  document.getElementById('todayPill').innerHTML = '📅 <strong>Hoy, ' + fmtDate(todayStr) + '</strong>';
+}
+
+function renderTotal(){
+  const entries = entriesForMonth(currentMonthKey);
+  const total = entries.reduce((s,e)=> s + Number(e.amount), 0);
+  document.getElementById('monthLabel').textContent = monthLabel(currentMonthKey);
+  document.getElementById('totalAmount').textContent = fmt(total);
+  document.getElementById('totalSub').textContent =
+    entries.length ? entries.length + (entries.length===1 ? ' registro' : ' registros') : 'sin registros todavía';
+}
+
+function renderCategoryBreakdown(){
+  const entries = entriesForMonth(currentMonthKey);
+  const area = document.getElementById('categoryBreakdown');
+  if (!entries.length){ area.innerHTML = '<div class="empty-state">Nada registrado este mes.</div>'; return; }
+  const map = {};
+  entries.forEach(e=>{ map[e.category] = (map[e.category]||0) + Number(e.amount); });
+  const rows = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const maxVal = Math.max(...rows.map(r=>r[1]));
+  area.innerHTML = rows.map(([cat,val])=>{
+    const c = colorFor(cat);
+    const pct = Math.max(4, (val/maxVal)*100);
+    return `
+      <div class="bar-row">
+        <span class="bar-cat-name" style="color:${c.fg}">${cat}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c.fg}"></div></div>
+        <span class="bar-amount">${fmt(val)}</span>
+      </div>`;
+  }).join('');
+}
+
+function renderPeopleBreakdown(){
+  const card = document.getElementById('peopleCard');
+  if (state.people.length < 2){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const entries = entriesForMonth(currentMonthKey);
+  const area = document.getElementById('peopleBreakdown');
+  if (!entries.length){ area.innerHTML = '<div class="empty-state">Nada registrado este mes.</div>'; return; }
+  const map = {};
+  entries.forEach(e=>{ map[e.person] = (map[e.person]||0) + Number(e.amount); });
+  const rows = state.people.map(p => [p, map[p]||0]).sort((a,b)=>b[1]-a[1]);
+  const maxVal = Math.max(1, ...rows.map(r=>r[1]));
+  area.innerHTML = rows.map(([person,val])=>{
+    const c = colorFor(person);
+    const pct = Math.max(4, (val/maxVal)*100);
+    return `
+      <div class="bar-row">
+        <span class="bar-cat-name" style="color:${c.fg}">${person}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c.fg}"></div></div>
+        <span class="bar-amount">${fmt(val)}</span>
+      </div>`;
+  }).join('');
+}
+
+function renderQuincenaChart(){
+  const area = document.getElementById('quincenaChart');
+  if (!state.entries.length){ area.innerHTML = '<div class="empty-state">Todavía no hay gastos para graficar.</div>'; return; }
+  const map = {};
+  state.entries.forEach(e=>{
+    const k = quincenaKey(e.date);
+    map[k] = (map[k]||0) + Number(e.amount);
+  });
+  const keys = Object.keys(map).sort();
+  const shown = keys.slice(-6);
+  const maxVal = Math.max(1, ...shown.map(k=>map[k]));
+
+  const barW = 30, gap = 16, chartH = 90, leftPad = 12, topPad = 20;
+  const totalW = shown.length*(barW+gap) - gap + leftPad*2;
+
+  let bars = '';
+  shown.forEach((key,i)=>{
+    const x = leftPad + i*(barW+gap);
+    const h = (map[key]/maxVal)*chartH;
+    bars += `
+      <rect x="${x}" y="${topPad+chartH-h}" width="${barW}" height="${Math.max(h,2)}" rx="4" fill="var(--accent)"></rect>
+      <text x="${x+barW/2}" y="${topPad+chartH-h-8}" text-anchor="middle" class="chart-val" fill="#FFD24D">${fmt(map[key])}</text>
+      <text x="${x+barW/2}" y="${topPad+chartH+16}" text-anchor="middle" class="chart-label">${quincenaLabel(key)}</text>
+    `;
+  });
+
+  area.innerHTML = `<svg viewBox="0 0 ${totalW} ${chartH+topPad+30}" class="chart-svg" preserveAspectRatio="xMinYMid meet">${bars}</svg>`;
+}
+
+function renderCategoryPicker(){
+  const picker = document.getElementById('categoryPicker');
+  if (!state.categories.includes(selectedCategory)) selectedCategory = state.categories[0];
+  picker.innerHTML = state.categories.map(cat=>{
+    const c = colorFor(cat);
+    const active = cat === selectedCategory;
+    return `<button type="button" class="chip ${active?'active':''}" data-cat="${cat}"
+      style="color:${c.fg}; background:${active?c.bg:'var(--sunken)'}">${cat}</button>`;
+  }).join('');
+  picker.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ selectedCategory = btn.dataset.cat; renderCategoryPicker(); });
+  });
+}
+
+function renderPersonPicker(){
+  const field = document.getElementById('personField');
+  const picker = document.getElementById('personPicker');
+  if (state.people.length < 2){ field.style.display = 'none'; selectedPerson = state.people[0]; return; }
+  field.style.display = 'block';
+  if (!state.people.includes(selectedPerson)) selectedPerson = state.people[0];
+  picker.innerHTML = state.people.map(p=>{
+    const c = colorFor(p);
+    const active = p === selectedPerson;
+    return `<button type="button" class="chip ${active?'active':''}" data-p="${p}"
+      style="color:${c.fg}; background:${active?c.bg:'var(--sunken)'}">${p}</button>`;
+  }).join('');
+  picker.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ selectedPerson = btn.dataset.p; renderPersonPicker(); });
+  });
+}
+
+function renderHistory(){
+  const entries = state.entries;
+  const list = document.getElementById('historyList');
+  document.getElementById('countLabel').textContent =
+    entries.length ? entries.length + (entries.length===1 ? ' registro' : ' registros') : '';
+  if (!entries.length){ list.innerHTML = '<div class="empty-state">Todavía no hay registros.</div>'; return; }
+  const sorted = [...entries].sort((a,b)=> b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
+  const showPerson = state.people.length > 1;
+  list.innerHTML = sorted.map(e=>{
+    const c = colorFor(e.category);
+    return `
+      <div class="entry">
+        <span class="entry-cat-dot" style="background:${c.fg}"></span>
+        <div class="entry-main">
+          <div class="entry-cat">${e.category}</div>
+          <div class="entry-meta">${fmtDate(e.date)}${showPerson ? ' · ' + e.person : ''}${e.note ? ' · <span class="note">'+e.note+'</span>' : ''}</div>
+        </div>
+        <span class="entry-amount">−${fmt(e.amount)}</span>
+        <button class="entry-del" data-id="${e.id}" title="Eliminar">✕</button>
+      </div>`;
+  }).join('');
+  list.querySelectorAll('.entry-del').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      state.entries = state.entries.filter(x=>String(x.id) !== btn.dataset.id);
+      await persistAll();
+      render();
+    });
+  });
+}
+
+function renderSettingsLists(){
+  const peopleList = document.getElementById('peopleTagList');
+  peopleList.innerHTML = state.people.map(p=>`
+    <span class="tag">${p}${state.people.length>1 ? `<button class="tag-remove" data-person="${p}">✕</button>` : ''}</span>
+  `).join('');
+  peopleList.querySelectorAll('.tag-remove').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      state.people = state.people.filter(p=>p!==btn.dataset.person);
+      await persistAll();
+      render();
+    });
+  });
+
+  const catList = document.getElementById('categoryTagList');
+  catList.innerHTML = state.categories.map(c=>`
+    <span class="tag">${c}${state.categories.length>1 ? `<button class="tag-remove" data-cat="${c}">✕</button>` : ''}</span>
+  `).join('');
+  catList.querySelectorAll('.tag-remove').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      state.categories = state.categories.filter(c=>c!==btn.dataset.cat);
+      await persistAll();
+      render();
+    });
+  });
+}
+
+function render(){
+  renderToday();
+  renderTotal();
+  renderCategoryBreakdown();
+  renderPeopleBreakdown();
+  renderQuincenaChart();
+  renderCategoryPicker();
+  renderPersonPicker();
+  renderHistory();
+  renderSettingsLists();
+}
+
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  const [y,m] = currentMonthKey.split('-').map(Number);
+  currentMonthKey = new Date(y, m-2, 1).toISOString().slice(0,7);
+  render();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  const [y,m] = currentMonthKey.split('-').map(Number);
+  currentMonthKey = new Date(y, m, 1).toISOString().slice(0,7);
+  render();
+});
+
+document.getElementById('addBtn').addEventListener('click', async ()=>{
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  const note = document.getElementById('noteInput').value.trim();
+  if (!amount || amount <= 0){ document.getElementById('amountInput').focus(); return; }
+
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    person: selectedPerson,
+    category: selectedCategory,
+    amount: amount,
+    date: todayStr,
+    note: note
+  };
+  state.entries.push(entry);
+  await persistAll();
+
+  document.getElementById('amountInput').value = '';
+  document.getElementById('noteInput').value = '';
+  currentMonthKey = todayStr.slice(0,7);
+  render();
+});
+
+document.getElementById('catManageToggle').addEventListener('click', ()=>{
+  document.getElementById('catManagePanel').classList.toggle('open');
+});
+document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
+  document.getElementById('settingsPanel').classList.toggle('open');
+});
+
+document.getElementById('addPersonBtn').addEventListener('click', async ()=>{
+  const input = document.getElementById('newPersonInput');
+  const name = input.value.trim();
+  if (!name || state.people.includes(name)) return;
+  state.people.push(name);
+  input.value = '';
+  await persistAll();
+  render();
+});
+
+document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
+  const input = document.getElementById('newCategoryInput');
+  const name = input.value.trim();
+  if (!name || state.categories.includes(name)) return;
+  state.categories.push(name);
+  input.value = '';
+  await persistAll();
+  render();
+});
+
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  if (!confirm('Esto borrará todos los registros, personas y categorías personalizadas. ¿Continuar?')) return;
+  state = { people: ['Yo'], categories: [...DEFAULT_CATEGORIES], entries: [] };
+  selectedPerson = state.people[0];
+  selectedCategory = state.categories[0];
+  await persistAll();
+  render();
+});
+
+loadAll();
+</script>
+</body>
+</html>

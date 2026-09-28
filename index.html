@@ -33,6 +33,14 @@
   .wrap{max-width:620px;margin:0 auto;padding:34px 18px 90px;}
 
   header.top{margin-bottom:2px;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .reset-top-btn{
+    background:var(--sunken);color:var(--muted);
+    border:1px solid var(--line);border-radius:7px;
+    font-size:12px;font-weight:600;padding:7px 11px;
+    white-space:nowrap;flex:0 0 auto;
+  }
+  .reset-top-btn:hover{color:var(--accent);border-color:var(--accent);}
   h1{
     font-family:'Source Serif 4',serif;
     font-weight:700;font-style:italic;
@@ -155,9 +163,12 @@
 <body>
 <div class="wrap">
 
-  <header class="top">
-    <h1>Mis gastos</h1>
-    <p class="today-sub" id="todaySub">—</p>
+  <header class="top header-row">
+    <div>
+      <h1>Mis gastos</h1>
+      <p class="today-sub" id="todaySub">—</p>
+    </div>
+    <button class="reset-top-btn" id="resetTopBtn" title="Reiniciar todos los gastos">↺ Reiniciar</button>
   </header>
   <p class="status-line" id="statusLine">Cargando...</p>
 
@@ -286,8 +297,8 @@
    CONFIGURACIÓN DE JSONBIN.IO
    Sustituye estos dos valores por los que te dio tu cuenta.
    ========================================================= */
-const JSONBIN_BIN_ID = '6aa84d1dac6210605accf309';
-const JSONBIN_API_KEY = '$2a$10$0F7DfN4Nr14Hd6n0vAf5hu114cujRy4hydn4w8CtacFgEPu9pqT16';
+const JSONBIN_BIN_ID = 'PON_AQUI_TU_BIN_ID';
+const JSONBIN_API_KEY = 'PON_AQUI_TU_API_KEY';
 /* ========================================================= */
 
 const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID;
@@ -633,6 +644,14 @@ document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
   state.categories.push(name);
   input.value = '';
   await persistAll();
+  render();
+});
+
+document.getElementById('resetTopBtn').addEventListener('click', async ()=>{
+  if (!confirm('Esto borrará todos tus gastos registrados (tus personas y categorías se quedan igual). ¿Continuar?')) return;
+  state.entries = [];
+  await persistAll();
+  currentMonthKey = new Date().toISOString().slice(0,7);
   render();
 });
 

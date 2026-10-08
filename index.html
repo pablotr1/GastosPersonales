@@ -155,6 +155,13 @@
   .entry-del{background:none;color:var(--line);font-size:15px;flex:0 0 auto;padding:2px 4px;line-height:1;}
   .entry-del:hover{color:var(--accent);}
 
+  .cat-icon-row{display:flex;gap:6px;flex:0 0 auto;}
+  .icon-btn{
+    width:28px;height:28px;border-radius:6px;
+    background:var(--sunken);border:1px solid var(--line);color:var(--muted);
+    font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1;
+  }
+  .icon-btn:hover{color:var(--accent);border-color:var(--accent);}
   .inline-toggle{background:none;color:var(--muted);font-size:12px;text-decoration:underline;text-decoration-color:var(--line);padding:0;}
   .inline-toggle:hover{color:var(--accent);}
   .manage-panel{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);}
@@ -332,18 +339,25 @@
   <!-- 4. POR CATEGORÍA -->
   <div class="receipt">
     <div class="receipt-body">
-      <p class="section-title">Por categoría</p>
+      <div class="section-head">
+        <p class="section-title">Por categoría</p>
+        <div class="cat-icon-row">
+          <button class="icon-btn" id="catAddToggle" title="Agregar categoría">＋</button>
+          <button class="icon-btn" id="catManageToggle" title="Eliminar categorías">⚙</button>
+        </div>
+      </div>
       <div id="categoryBreakdown"><div class="loading">Cargando...</div></div>
 
-      <div style="margin-top:12px;">
-        <button class="inline-toggle" id="catManageToggle">Editar categorías</button>
-      </div>
-      <div class="manage-panel" id="catManagePanel">
-        <div class="tag-list" id="categoryTagList"></div>
+      <div class="manage-panel" id="catAddPanel">
         <div class="add-row">
           <input type="text" id="newCategoryInput" placeholder="Nueva categoría">
           <button class="add-row-btn" id="addCategoryBtn">Agregar</button>
         </div>
+      </div>
+
+      <div class="manage-panel" id="catManagePanel">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 9px 0;">Da clic en la ✕ para eliminar una categoría.</p>
+        <div class="tag-list" id="categoryTagList"></div>
       </div>
     </div>
   </div>
@@ -795,7 +809,12 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
   render();
 });
 
+document.getElementById('catAddToggle').addEventListener('click', ()=>{
+  document.getElementById('catManagePanel').classList.remove('open');
+  document.getElementById('catAddPanel').classList.toggle('open');
+});
 document.getElementById('catManageToggle').addEventListener('click', ()=>{
+  document.getElementById('catAddPanel').classList.remove('open');
   document.getElementById('catManagePanel').classList.toggle('open');
 });
 document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{

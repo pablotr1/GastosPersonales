@@ -6,6 +6,7 @@
 <title>Mis gastos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,600&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg:#11131A;
@@ -34,13 +35,15 @@
 
   header.top{margin-bottom:2px;}
   .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-  .reset-top-btn{
+  .header-actions{display:flex;gap:8px;flex:0 0 auto;}
+  .reset-top-btn,.logout-btn{
     background:var(--sunken);color:var(--muted);
     border:1px solid var(--line);border-radius:7px;
     font-size:12px;font-weight:600;padding:7px 11px;
     white-space:nowrap;flex:0 0 auto;
   }
   .reset-top-btn:hover{color:var(--accent);border-color:var(--accent);}
+  .logout-btn:hover{color:#FFD24D;border-color:#FFD24D;}
   h1{
     font-family:'Source Serif 4',serif;
     font-weight:700;font-style:italic;
@@ -93,7 +96,7 @@
 
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
-  input[type=text],input[type=number]{
+  input[type=text],input[type=number],input[type=email],input[type=password]{
     width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;
     font-family:'Work Sans',sans-serif;font-size:14px;background:var(--sunken);color:var(--ink);
   }
@@ -148,10 +151,20 @@
   .reset-btn:hover{color:var(--accent);}
   .config-note{font-size:11.5px;color:var(--muted);line-height:1.5;background:var(--sunken);border:1px solid var(--line);padding:10px 12px;border-radius:7px;margin-top:12px;}
 
-  .chart-legend{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-bottom:12px;}
   .chart-svg{width:100%;height:auto;display:block;}
   .chart-label{fill:var(--muted);font-size:10px;font-family:'IBM Plex Mono',monospace;}
-  .chart-val{font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;}
+
+  /* --- auth screen --- */
+  #authScreen{max-width:380px;margin:90px auto 0;padding:0 18px;}
+  .auth-tabs{display:flex;gap:6px;margin-bottom:18px;}
+  .auth-tab{
+    flex:1;background:var(--sunken);color:var(--muted);
+    padding:10px;border-radius:7px;font-size:13.5px;font-weight:600;
+    border:1px solid var(--line);
+  }
+  .auth-tab.active{background:var(--accent-soft);color:#FFD24D;border-color:#FFD24D;}
+  .auth-error{color:var(--accent);font-size:12.5px;margin:4px 0 10px 0;min-height:14px;}
+  .auth-note{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;text-align:center;}
 
   @media (max-width:480px){
     .total-amount{font-size:34px;}
@@ -161,14 +174,49 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- ======================= PANTALLA DE LOGIN / REGISTRO ======================= -->
+<div id="authScreen">
+  <h1 style="text-align:center;">Mis gastos</h1>
+  <p class="today-sub" style="text-align:center;margin-bottom:20px;">inicia sesión para ver tus gastos</p>
+
+  <div class="receipt">
+    <div class="receipt-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin">Iniciar sesión</button>
+        <button class="auth-tab" id="tabSignup">Crear cuenta</button>
+      </div>
+
+      <form id="authForm" autocomplete="on">
+      <div class="field">
+        <label>Correo</label>
+        <input type="email" id="authEmail" name="email" autocomplete="email" placeholder="tu@correo.com">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="authPassword" name="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      </form>
+      <p class="auth-error" id="authError"></p>
+
+      <button class="add-btn" id="authSubmitBtn" form="authForm" type="submit">Entrar</button>
+      <p class="auth-note" id="authNote">¿Olvidaste tu contraseña? Pídele a quien administra el proyecto de Supabase que te ayude a restablecerla.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= APP PRINCIPAL ======================= -->
+<div class="wrap" id="appScreen" style="display:none;">
 
   <header class="top header-row">
     <div>
       <h1>Mis gastos</h1>
       <p class="today-sub" id="todaySub">—</p>
     </div>
-    <button class="reset-top-btn" id="resetTopBtn" title="Reiniciar todos los gastos">↺ Reiniciar</button>
+    <div class="header-actions">
+      <button class="reset-top-btn" id="resetTopBtn" title="Reiniciar todos los gastos">↺ Reiniciar</button>
+      <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
+    </div>
   </header>
   <p class="status-line" id="statusLine">Cargando...</p>
 
@@ -188,11 +236,6 @@
       <div class="field">
         <label>Categoría</label>
         <div class="chip-row" id="categoryPicker"></div>
-      </div>
-
-      <div class="field" id="personField" style="display:none;">
-        <label>¿Quién gastó?</label>
-        <div class="chip-row" id="personPicker"></div>
       </div>
 
       <div class="field">
@@ -245,14 +288,6 @@
     </div>
   </div>
 
-  <!-- POR PERSONA (solo si hay más de una) -->
-  <div class="receipt" id="peopleCard" style="display:none;">
-    <div class="receipt-body">
-      <p class="section-title">Por persona</p>
-      <div id="peopleBreakdown"></div>
-    </div>
-  </div>
-
   <!-- 4. GASTOS POR QUINCENA -->
   <div class="receipt">
     <div class="receipt-body">
@@ -275,16 +310,12 @@
   <!-- AJUSTES -->
   <div class="receipt">
     <div class="receipt-body">
-      <button class="inline-toggle" id="settingsToggleBtn">Ajustes (personas, datos)</button>
+      <button class="inline-toggle" id="settingsToggleBtn">Ajustes</button>
       <div class="manage-panel" id="settingsPanel">
-        <div class="tag-list" id="peopleTagList"></div>
-        <div class="add-row">
-          <input type="text" id="newPersonInput" placeholder="Nombre de la persona">
-          <button class="add-row-btn" id="addPersonBtn">Agregar</button>
-        </div>
-        <button class="reset-btn" id="resetBtn" style="margin-top:16px;">Borrar todos los registros y ajustes</button>
+        <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px 0;">Sesión: <span id="sessionEmail" style="color:var(--ink);"></span></p>
+        <button class="reset-btn" id="resetBtn">Borrar todos mis registros y categorías personalizadas</button>
         <div class="config-note">
-          Los datos se guardan en tu propio bin de JSONBin.io. Si algo no carga, revisa que JSONBIN_BIN_ID y JSONBIN_API_KEY estén bien puestos al inicio del código.
+          Cada persona que inicia sesión aquí ve y guarda únicamente sus propios gastos. Nadie más puede ver tus datos, ni tú los de otras personas.
         </div>
       </div>
     </div>
@@ -294,14 +325,17 @@
 
 <script>
 /* =========================================================
-   CONFIGURACIÓN DE JSONBIN.IO
-   Sustituye estos dos valores por los que te dio tu cuenta.
+   CONFIGURACIÓN DE SUPABASE
+   Sustituye estos dos valores por los de tu proyecto
+   (Project Settings → API).
    ========================================================= */
-const JSONBIN_BIN_ID = '6aa84d1dac6210605accf309';
-const JSONBIN_API_KEY = '$2a$10$0F7DfN4Nr14Hd6n0vAf5hu114cujRy4hydn4w8CtacFgEPu9pqT16';
+const SUPABASE_URL = 'https://eqenunehdeovtrohpexo.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_XjP0MQhtspBVUTG-D1PpDg_DVTbQmNh';
 /* ========================================================= */
 
-const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID;
+const sb = (!SUPABASE_URL.startsWith('PON_AQUI') && !SUPABASE_ANON_KEY.startsWith('PON_AQUI'))
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const DEFAULT_CATEGORIES = ['Comida','Transporte','Renta','Entretenimiento','Salud','Otros'];
 const PALETTE = [
@@ -315,18 +349,18 @@ const PALETTE = [
   {fg:'#FFD24D', bg:'#3A2F17'}
 ];
 
-let state = { people: ['Yo'], categories: [...DEFAULT_CATEGORIES], entries: [] };
-let selectedPerson = state.people[0];
+let currentUser = null;
+let state = { categories: [...DEFAULT_CATEGORIES], entries: [] };
 let selectedCategory = state.categories[0];
 let currentMonthKey = new Date().toISOString().slice(0,7);
 const todayStr = new Date().toISOString().slice(0,10);
+let authMode = 'login';
 
 const fmt = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-MX');
 const fmtDate = (iso) => {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('es-MX', {day:'numeric', month:'short'});
 };
-
 function hashStr(str){ let h=0; for (let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; } return h; }
 function colorFor(name){ return PALETTE[hashStr(name) % PALETTE.length]; }
 
@@ -335,77 +369,131 @@ function setStatus(text, isError){
   el.textContent = text || '';
   el.classList.toggle('error', !!isError);
 }
+function setAuthError(text){ document.getElementById('authError').textContent = text || ''; }
 
 function monthLabel(key){
   const [y,m] = key.split('-');
-  const d = new Date(Number(y), Number(m)-1, 1);
-  return d.toLocaleDateString('es-MX', {month:'long', year:'numeric'});
+  return new Date(Number(y), Number(m)-1, 1).toLocaleDateString('es-MX', {month:'long', year:'numeric'});
 }
-
 function entriesForMonth(key){ return state.entries.filter(e => e.date.slice(0,7) === key); }
 
 function quincenaKey(dateStr){
   const [y,m,d] = dateStr.split('-').map(Number);
-  const q = d<=15 ? 'Q1' : 'Q2';
-  return `${y}-${String(m).padStart(2,'0')}-${q}`;
+  return `${y}-${String(m).padStart(2,'0')}-${d<=15?'Q1':'Q2'}`;
 }
 function quincenaLabel(key){
   const [y,m,q] = key.split('-');
-  const monthDate = new Date(Number(y), Number(m)-1, 1);
-  const monthShort = monthDate.toLocaleDateString('es-MX',{month:'short'}).replace('.','');
+  const monthShort = new Date(Number(y), Number(m)-1, 1).toLocaleDateString('es-MX',{month:'short'}).replace('.','');
   if (q === 'Q1') return `1-15 ${monthShort}`;
   const lastDay = new Date(Number(y), Number(m), 0).getDate();
   return `16-${lastDay} ${monthShort}`;
 }
 
-async function loadAll(){
-  if (JSONBIN_BIN_ID.startsWith('PON_AQUI') || JSONBIN_API_KEY.startsWith('PON_AQUI')){
-    setStatus('Falta configurar JSONBIN_BIN_ID y JSONBIN_API_KEY en el código.', true);
-    render();
-    return;
+/* ---------------- AUTENTICACIÓN ---------------- */
+
+document.getElementById('tabLogin').addEventListener('click', ()=> setAuthMode('login'));
+document.getElementById('tabSignup').addEventListener('click', ()=> setAuthMode('signup'));
+
+function setAuthMode(mode){
+  authMode = mode;
+  document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
+  document.getElementById('authSubmitBtn').textContent = mode === 'login' ? 'Entrar' : 'Crear cuenta';
+  document.getElementById('authPassword').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  setAuthError('');
+}
+
+document.getElementById('authForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if (!sb){ setAuthError('Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en el código.'); return; }
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if (!email || !password){ setAuthError('Escribe tu correo y tu contraseña.'); return; }
+  setAuthError('');
+  document.getElementById('authSubmitBtn').disabled = true;
+
+  if (authMode === 'login'){
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error){ setAuthError(error.message); }
+    else { await onLoggedIn(data.user); }
+  } else {
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error){ setAuthError(error.message); }
+    else if (data.user && !data.session){
+      setAuthError('Cuenta creada. Revisa tu correo para confirmar antes de entrar.');
+    } else if (data.session){
+      await onLoggedIn(data.user);
+    }
   }
+  document.getElementById('authSubmitBtn').disabled = false;
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  if (sb) await sb.auth.signOut();
+  currentUser = null;
+  state = { categories: [...DEFAULT_CATEGORIES], entries: [] };
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'block';
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+});
+
+async function onLoggedIn(user){
+  currentUser = user;
+  document.getElementById('sessionEmail').textContent = user.email;
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  await loadUserData();
+}
+
+/* ---------------- DATOS (Supabase) ---------------- */
+
+async function loadUserData(){
+  setStatus('Cargando...');
   try{
-    setStatus('Cargando...');
-    const res = await fetch(JSONBIN_BASE + '/latest', { headers: { 'X-Master-Key': JSONBIN_API_KEY } });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const record = data.record || {};
-    state.people = Array.isArray(record.people) && record.people.length ? record.people : ['Yo'];
-    state.categories = Array.isArray(record.categories) && record.categories.length ? record.categories : [...DEFAULT_CATEGORIES];
-    state.entries = Array.isArray(record.entries) ? record.entries : [];
-    selectedPerson = state.people[0];
+    let { data: settingsRow, error: settingsErr } = await sb
+      .from('user_settings').select('categories').eq('user_id', currentUser.id).maybeSingle();
+    if (settingsErr) throw settingsErr;
+
+    if (!settingsRow){
+      const { error: insErr } = await sb.from('user_settings')
+        .insert({ user_id: currentUser.id, categories: DEFAULT_CATEGORIES });
+      if (insErr) throw insErr;
+      state.categories = [...DEFAULT_CATEGORIES];
+    } else {
+      state.categories = settingsRow.categories && settingsRow.categories.length ? settingsRow.categories : [...DEFAULT_CATEGORIES];
+    }
+
+    const { data: expenseRows, error: expErr } = await sb
+      .from('expenses').select('id, amount, category, date, note').eq('user_id', currentUser.id).order('date', { ascending: false });
+    if (expErr) throw expErr;
+    state.entries = expenseRows || [];
+
     selectedCategory = state.categories[0];
     setStatus('');
   } catch(err){
-    setStatus('No se pudo cargar (' + err.message + '). Revisa tu conexión o tu configuración.', true);
+    setStatus('No se pudo cargar (' + err.message + ').', true);
   }
   render();
 }
 
-async function persistAll(){
-  if (JSONBIN_BIN_ID.startsWith('PON_AQUI') || JSONBIN_API_KEY.startsWith('PON_AQUI')){
-    setStatus('Falta configurar JSONBIN_BIN_ID y JSONBIN_API_KEY en el código.', true);
-    return;
-  }
-  setStatus('Guardando...');
+async function saveCategories(){
   try{
-    const res = await fetch(JSONBIN_BASE, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
-      body: JSON.stringify(state)
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    setStatus('Guardado.');
+    const { error } = await sb.from('user_settings')
+      .update({ categories: state.categories }).eq('user_id', currentUser.id);
+    if (error) throw error;
+    setStatus('');
   } catch(err){
     setStatus('No se pudo guardar (' + err.message + ').', true);
   }
 }
 
+/* ---------------- RENDER ---------------- */
+
 function renderToday(){
   document.getElementById('todaySub').textContent =
     new Date(todayStr + 'T00:00:00').toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
 }
-
 function initDateInput(){
   const input = document.getElementById('dateInput');
   if (!input.value) input.value = todayStr;
@@ -440,44 +528,16 @@ function renderCategoryBreakdown(){
   }).join('');
 }
 
-function renderPeopleBreakdown(){
-  const card = document.getElementById('peopleCard');
-  if (state.people.length < 2){ card.style.display = 'none'; return; }
-  card.style.display = 'block';
-  const entries = entriesForMonth(currentMonthKey);
-  const area = document.getElementById('peopleBreakdown');
-  if (!entries.length){ area.innerHTML = '<div class="empty-state">Nada registrado este mes.</div>'; return; }
-  const map = {};
-  entries.forEach(e=>{ map[e.person] = (map[e.person]||0) + Number(e.amount); });
-  const rows = state.people.map(p => [p, map[p]||0]).sort((a,b)=>b[1]-a[1]);
-  const maxVal = Math.max(1, ...rows.map(r=>r[1]));
-  area.innerHTML = rows.map(([person,val])=>{
-    const c = colorFor(person);
-    const pct = Math.max(4, (val/maxVal)*100);
-    return `
-      <div class="bar-row">
-        <span class="bar-cat-name" style="color:${c.fg}">${person}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c.fg}"></div></div>
-        <span class="bar-amount">${fmt(val)}</span>
-      </div>`;
-  }).join('');
-}
-
 function renderQuincenaChart(){
   const area = document.getElementById('quincenaChart');
   if (!state.entries.length){ area.innerHTML = '<div class="empty-state">Todavía no hay gastos para graficar.</div>'; return; }
   const map = {};
-  state.entries.forEach(e=>{
-    const k = quincenaKey(e.date);
-    map[k] = (map[k]||0) + Number(e.amount);
-  });
+  state.entries.forEach(e=>{ const k = quincenaKey(e.date); map[k] = (map[k]||0) + Number(e.amount); });
   const keys = Object.keys(map).sort();
   const shown = keys.slice(-6);
   const maxVal = Math.max(1, ...shown.map(k=>map[k]));
-
   const barW = 30, gap = 16, chartH = 90, leftPad = 12, topPad = 20;
   const totalW = shown.length*(barW+gap) - gap + leftPad*2;
-
   let bars = '';
   shown.forEach((key,i)=>{
     const x = leftPad + i*(barW+gap);
@@ -488,7 +548,6 @@ function renderQuincenaChart(){
       <text x="${x+barW/2}" y="${topPad+chartH+16}" text-anchor="middle" class="chart-label">${quincenaLabel(key)}</text>
     `;
   });
-
   area.innerHTML = `<svg viewBox="0 0 ${totalW} ${chartH+topPad+30}" class="chart-svg" preserveAspectRatio="xMinYMid meet">${bars}</svg>`;
 }
 
@@ -506,23 +565,6 @@ function renderCategoryPicker(){
   });
 }
 
-function renderPersonPicker(){
-  const field = document.getElementById('personField');
-  const picker = document.getElementById('personPicker');
-  if (state.people.length < 2){ field.style.display = 'none'; selectedPerson = state.people[0]; return; }
-  field.style.display = 'block';
-  if (!state.people.includes(selectedPerson)) selectedPerson = state.people[0];
-  picker.innerHTML = state.people.map(p=>{
-    const c = colorFor(p);
-    const active = p === selectedPerson;
-    return `<button type="button" class="chip ${active?'active':''}" data-p="${p}"
-      style="color:${c.fg}; background:${active?c.bg:'var(--sunken)'}">${p}</button>`;
-  }).join('');
-  picker.querySelectorAll('.chip').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ selectedPerson = btn.dataset.p; renderPersonPicker(); });
-  });
-}
-
 function renderHistory(){
   const entries = state.entries;
   const list = document.getElementById('historyList');
@@ -530,7 +572,6 @@ function renderHistory(){
     entries.length ? entries.length + (entries.length===1 ? ' registro' : ' registros') : '';
   if (!entries.length){ list.innerHTML = '<div class="empty-state">Todavía no hay registros.</div>'; return; }
   const sorted = [...entries].sort((a,b)=> b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
-  const showPerson = state.people.length > 1;
   list.innerHTML = sorted.map(e=>{
     const c = colorFor(e.category);
     return `
@@ -538,7 +579,7 @@ function renderHistory(){
         <span class="entry-cat-dot" style="background:${c.fg}"></span>
         <div class="entry-main">
           <div class="entry-cat">${e.category}</div>
-          <div class="entry-meta">${fmtDate(e.date)}${showPerson ? ' · ' + e.person : ''}${e.note ? ' · <span class="note">'+e.note+'</span>' : ''}</div>
+          <div class="entry-meta">${fmtDate(e.date)}${e.note ? ' · <span class="note">'+e.note+'</span>' : ''}</div>
         </div>
         <span class="entry-amount">−${fmt(e.amount)}</span>
         <button class="entry-del" data-id="${e.id}" title="Eliminar">✕</button>
@@ -546,26 +587,16 @@ function renderHistory(){
   }).join('');
   list.querySelectorAll('.entry-del').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      state.entries = state.entries.filter(x=>String(x.id) !== btn.dataset.id);
-      await persistAll();
+      const id = btn.dataset.id;
+      const { error } = await sb.from('expenses').delete().eq('id', id).eq('user_id', currentUser.id);
+      if (error){ setStatus('No se pudo eliminar (' + error.message + ').', true); return; }
+      state.entries = state.entries.filter(x=>String(x.id) !== id);
       render();
     });
   });
 }
 
 function renderSettingsLists(){
-  const peopleList = document.getElementById('peopleTagList');
-  peopleList.innerHTML = state.people.map(p=>`
-    <span class="tag">${p}${state.people.length>1 ? `<button class="tag-remove" data-person="${p}">✕</button>` : ''}</span>
-  `).join('');
-  peopleList.querySelectorAll('.tag-remove').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      state.people = state.people.filter(p=>p!==btn.dataset.person);
-      await persistAll();
-      render();
-    });
-  });
-
   const catList = document.getElementById('categoryTagList');
   catList.innerHTML = state.categories.map(c=>`
     <span class="tag">${c}${state.categories.length>1 ? `<button class="tag-remove" data-cat="${c}">✕</button>` : ''}</span>
@@ -573,7 +604,7 @@ function renderSettingsLists(){
   catList.querySelectorAll('.tag-remove').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       state.categories = state.categories.filter(c=>c!==btn.dataset.cat);
-      await persistAll();
+      await saveCategories();
       render();
     });
   });
@@ -583,13 +614,13 @@ function render(){
   renderToday();
   renderTotal();
   renderCategoryBreakdown();
-  renderPeopleBreakdown();
   renderQuincenaChart();
   renderCategoryPicker();
-  renderPersonPicker();
   renderHistory();
   renderSettingsLists();
 }
+
+/* ---------------- EVENTOS DE LA APP ---------------- */
 
 document.getElementById('prevMonth').addEventListener('click', ()=>{
   const [y,m] = currentMonthKey.split('-').map(Number);
@@ -609,17 +640,19 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
   const chosenDate = dateInput.value || todayStr;
   if (!amount || amount <= 0){ document.getElementById('amountInput').focus(); return; }
 
-  const entry = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
-    person: selectedPerson,
-    category: selectedCategory,
+  setStatus('Guardando...');
+  const { data, error } = await sb.from('expenses').insert({
+    user_id: currentUser.id,
     amount: amount,
+    category: selectedCategory,
     date: chosenDate,
     note: note
-  };
-  state.entries.push(entry);
-  await persistAll();
+  }).select().single();
 
+  if (error){ setStatus('No se pudo guardar (' + error.message + ').', true); return; }
+
+  state.entries.push(data);
+  setStatus('');
   document.getElementById('amountInput').value = '';
   document.getElementById('noteInput').value = '';
   dateInput.value = todayStr;
@@ -634,45 +667,49 @@ document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
   document.getElementById('settingsPanel').classList.toggle('open');
 });
 
-document.getElementById('addPersonBtn').addEventListener('click', async ()=>{
-  const input = document.getElementById('newPersonInput');
-  const name = input.value.trim();
-  if (!name || state.people.includes(name)) return;
-  state.people.push(name);
-  input.value = '';
-  await persistAll();
-  render();
-});
-
 document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{
   const input = document.getElementById('newCategoryInput');
   const name = input.value.trim();
   if (!name || state.categories.includes(name)) return;
   state.categories.push(name);
   input.value = '';
-  await persistAll();
+  await saveCategories();
   render();
 });
 
 document.getElementById('resetTopBtn').addEventListener('click', async ()=>{
-  if (!confirm('Esto borrará todos tus gastos registrados (tus personas y categorías se quedan igual). ¿Continuar?')) return;
+  if (!confirm('Esto borrará todos tus gastos registrados (tus categorías se quedan igual). ¿Continuar?')) return;
+  const { error } = await sb.from('expenses').delete().eq('user_id', currentUser.id);
+  if (error){ setStatus('No se pudo borrar (' + error.message + ').', true); return; }
   state.entries = [];
-  await persistAll();
   currentMonthKey = new Date().toISOString().slice(0,7);
   render();
 });
 
 document.getElementById('resetBtn').addEventListener('click', async ()=>{
-  if (!confirm('Esto borrará todos los registros, personas y categorías personalizadas. ¿Continuar?')) return;
-  state = { people: ['Yo'], categories: [...DEFAULT_CATEGORIES], entries: [] };
-  selectedPerson = state.people[0];
-  selectedCategory = state.categories[0];
-  await persistAll();
+  if (!confirm('Esto borrará todos tus registros y tus categorías personalizadas. ¿Continuar?')) return;
+  const { error: delErr } = await sb.from('expenses').delete().eq('user_id', currentUser.id);
+  if (delErr){ setStatus('No se pudo borrar (' + delErr.message + ').', true); return; }
+  state.categories = [...DEFAULT_CATEGORIES];
+  await saveCategories();
+  state.entries = [];
   render();
 });
 
+/* ---------------- ARRANQUE ---------------- */
+
 initDateInput();
-loadAll();
+
+(async function init(){
+  if (!sb){
+    setAuthError('Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en el código.');
+    return;
+  }
+  const { data } = await sb.auth.getSession();
+  if (data.session){
+    await onLoggedIn(data.session.user);
+  }
+})();
 </script>
 </body>
 </html>

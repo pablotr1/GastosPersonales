@@ -43,6 +43,27 @@
     white-space:nowrap;flex:0 0 auto;
   }
   .reset-top-btn:hover{color:var(--accent);border-color:var(--accent);}
+  .avatar-row{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+  .avatar-circle{
+    position:relative;width:56px;height:56px;border-radius:50%;flex:0 0 auto;
+    background:var(--sunken);border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:pointer;color:var(--muted);font-size:22px;
+  }
+  .avatar-circle img{width:100%;height:100%;object-fit:cover;display:block;}
+  .avatar-circle .avatar-edit{
+    position:absolute;bottom:0;left:0;right:0;
+    background:rgba(0,0,0,.55);color:#fff;font-size:9px;text-align:center;
+    padding:3px 0;
+  }
+  .avatar-mini{
+    width:30px;height:30px;border-radius:50%;flex:0 0 auto;
+    background:var(--sunken);border:1px solid var(--line);
+    display:inline-flex;align-items:center;justify-content:center;
+    overflow:hidden;color:var(--muted);font-size:13px;vertical-align:middle;margin-right:8px;
+  }
+  .avatar-mini img{width:100%;height:100%;object-fit:cover;display:block;}
+  .header-title-row{display:flex;align-items:center;gap:12px;}
   .logout-btn:hover{color:#FFD24D;border-color:#FFD24D;}
   h1{
     font-family:'Source Serif 4',serif;
@@ -209,15 +230,40 @@
 <div class="wrap" id="appScreen" style="display:none;">
 
   <header class="top header-row">
-    <div>
-      <h1>Mis gastos</h1>
-      <p class="today-sub" id="todaySub">—</p>
+    <div class="header-title-row">
+      <span class="avatar-mini" id="avatarMini">🙂</span>
+      <div>
+        <h1>Mis gastos</h1>
+        <p class="today-sub" id="todaySub">—</p>
+      </div>
     </div>
     <div class="header-actions">
+      <button class="reset-top-btn" id="profileToggleBtn" title="Tu perfil">⚙</button>
       <button class="reset-top-btn" id="resetTopBtn" title="Reiniciar todos los gastos">↺ Reiniciar</button>
       <button class="logout-btn" id="logoutBtn" title="Cerrar sesión">Salir</button>
     </div>
   </header>
+
+  <!-- PERFIL (nombre) -->
+  <div class="receipt manage-panel" id="profilePanel" style="margin-top:14px;">
+    <div class="receipt-body">
+      <p class="section-title">Tu perfil</p>
+      <div class="avatar-row">
+        <div class="avatar-circle" id="avatarCircle" title="Cambiar foto">
+          <span id="avatarPlaceholder">🙂</span>
+          <span class="avatar-edit">Cambiar</span>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+        <div class="field" style="flex:1;margin-bottom:0;">
+          <label>Tu nombre</label>
+          <input type="text" id="displayNameInput" placeholder="Ej. Pablo">
+        </div>
+      </div>
+      <p class="auth-error" id="avatarStatus" style="min-height:14px;"></p>
+      <button class="add-row-btn" id="saveNameBtn">Guardar nombre</button>
+    </div>
+  </div>
+
   <p class="status-line" id="statusLine">Cargando...</p>
 
   <!-- 1. REGISTRAR GASTO -->
@@ -269,7 +315,21 @@
     <div class="receipt-edge"></div>
   </div>
 
-  <!-- 3. POR CATEGORÍA -->
+  <!-- 3. HISTÓRICO COMPLETO -->
+  <div class="receipt">
+    <div class="receipt-body">
+      <div class="section-head">
+        <p class="section-title">Histórico completo</p>
+        <span class="count-label" id="countLabel"></span>
+      </div>
+      <div id="historyList"><div class="loading">Cargando...</div></div>
+      <div style="margin-top:12px;text-align:center;" id="historyMoreWrap">
+        <button class="inline-toggle" id="historyMoreBtn">Ver más</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. POR CATEGORÍA -->
   <div class="receipt">
     <div class="receipt-body">
       <p class="section-title">Por categoría</p>
@@ -288,22 +348,11 @@
     </div>
   </div>
 
-  <!-- 4. GASTOS POR QUINCENA -->
+  <!-- 5. GASTOS POR QUINCENA -->
   <div class="receipt">
     <div class="receipt-body">
       <p class="section-title">Gastos por quincena</p>
       <div id="quincenaChart"><div class="loading">Cargando...</div></div>
-    </div>
-  </div>
-
-  <!-- 5. HISTÓRICO COMPLETO -->
-  <div class="receipt">
-    <div class="receipt-body">
-      <div class="section-head">
-        <p class="section-title">Histórico completo</p>
-        <span class="count-label" id="countLabel"></span>
-      </div>
-      <div id="historyList"><div class="loading">Cargando...</div></div>
     </div>
   </div>
 
@@ -350,7 +399,9 @@ const PALETTE = [
 ];
 
 let currentUser = null;
-let state = { categories: [...DEFAULT_CATEGORIES], entries: [] };
+let state = { categories: [...DEFAULT_CATEGORIES], entries: [], displayName: '' };
+let historyExpanded = false;
+const HISTORY_PAGE_SIZE = 10;
 let selectedCategory = state.categories[0];
 let currentMonthKey = new Date().toISOString().slice(0,7);
 const todayStr = new Date().toISOString().slice(0,10);
@@ -452,7 +503,7 @@ async function loadUserData(){
   setStatus('Cargando...');
   try{
     let { data: settingsRow, error: settingsErr } = await sb
-      .from('user_settings').select('categories').eq('user_id', currentUser.id).maybeSingle();
+      .from('user_settings').select('categories, display_name, avatar_url').eq('user_id', currentUser.id).maybeSingle();
     if (settingsErr) throw settingsErr;
 
     if (!settingsRow){
@@ -460,9 +511,17 @@ async function loadUserData(){
         .insert({ user_id: currentUser.id, categories: DEFAULT_CATEGORIES });
       if (insErr) throw insErr;
       state.categories = [...DEFAULT_CATEGORIES];
+      state.displayName = '';
+      state.avatarPath = '';
+      state.avatarUrl = '';
     } else {
       state.categories = settingsRow.categories && settingsRow.categories.length ? settingsRow.categories : [...DEFAULT_CATEGORIES];
+      state.displayName = settingsRow.display_name || '';
+      state.avatarPath = settingsRow.avatar_url || '';
+      state.avatarUrl = '';
     }
+    document.getElementById('displayNameInput').value = state.displayName;
+    await refreshAvatarUrl();
 
     const { data: expenseRows, error: expErr } = await sb
       .from('expenses').select('id, amount, category, date, note').eq('user_id', currentUser.id).order('date', { ascending: false });
@@ -488,11 +547,77 @@ async function saveCategories(){
   }
 }
 
+async function refreshAvatarUrl(){
+  if (!state.avatarPath){ state.avatarUrl = ''; renderAvatar(); return; }
+  try{
+    const { data, error } = await sb.storage.from('avatars').createSignedUrl(state.avatarPath, 3600);
+    if (error) throw error;
+    state.avatarUrl = data.signedUrl;
+  } catch(err){
+    state.avatarUrl = '';
+  }
+  renderAvatar();
+}
+
+function renderAvatar(){
+  const mini = document.getElementById('avatarMini');
+  const circle = document.getElementById('avatarCircle');
+  const placeholder = document.getElementById('avatarPlaceholder');
+  if (state.avatarUrl){
+    mini.innerHTML = '<img src="' + state.avatarUrl + '" alt="">';
+    if (placeholder) placeholder.style.display = 'none';
+    let img = circle.querySelector('img');
+    if (!img){
+      img = document.createElement('img');
+      circle.insertBefore(img, circle.firstChild);
+    }
+    img.src = state.avatarUrl;
+  } else {
+    mini.innerHTML = '🙂';
+    const img = circle.querySelector('img');
+    if (img) img.remove();
+    if (placeholder) placeholder.style.display = 'inline';
+  }
+}
+
+async function uploadAvatar(file){
+  const statusEl = document.getElementById('avatarStatus');
+  statusEl.textContent = 'Subiendo foto...';
+  try{
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = currentUser.id + '/avatar.' + ext;
+    const { error: upErr } = await sb.storage.from('avatars').upload(path, file, { upsert: true });
+    if (upErr) throw upErr;
+    const { error: updErr } = await sb.from('user_settings')
+      .update({ avatar_url: path }).eq('user_id', currentUser.id);
+    if (updErr) throw updErr;
+    state.avatarPath = path;
+    await refreshAvatarUrl();
+    statusEl.textContent = 'Foto actualizada.';
+  } catch(err){
+    statusEl.textContent = 'No se pudo subir la foto (' + err.message + ').';
+  }
+}
+
+async function saveDisplayName(){
+  const name = document.getElementById('displayNameInput').value.trim();
+  try{
+    const { error } = await sb.from('user_settings')
+      .update({ display_name: name }).eq('user_id', currentUser.id);
+    if (error) throw error;
+    state.displayName = name;
+    setStatus('Guardado.');
+    renderToday();
+  } catch(err){
+    setStatus('No se pudo guardar el nombre (' + err.message + ').', true);
+  }
+}
+
 /* ---------------- RENDER ---------------- */
 
 function renderToday(){
-  document.getElementById('todaySub').textContent =
-    new Date(todayStr + 'T00:00:00').toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
+  const fecha = new Date(todayStr + 'T00:00:00').toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
+  document.getElementById('todaySub').textContent = state.displayName ? ('Hola, ' + state.displayName + ' · ' + fecha) : fecha;
 }
 function initDateInput(){
   const input = document.getElementById('dateInput');
@@ -568,11 +693,20 @@ function renderCategoryPicker(){
 function renderHistory(){
   const entries = state.entries;
   const list = document.getElementById('historyList');
+  const moreWrap = document.getElementById('historyMoreWrap');
+  const moreBtn = document.getElementById('historyMoreBtn');
   document.getElementById('countLabel').textContent =
     entries.length ? entries.length + (entries.length===1 ? ' registro' : ' registros') : '';
-  if (!entries.length){ list.innerHTML = '<div class="empty-state">Todavía no hay registros.</div>'; return; }
+  if (!entries.length){ list.innerHTML = '<div class="empty-state">Todavía no hay registros.</div>'; moreWrap.style.display = 'none'; return; }
   const sorted = [...entries].sort((a,b)=> b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
-  list.innerHTML = sorted.map(e=>{
+  const visible = historyExpanded ? sorted : sorted.slice(0, HISTORY_PAGE_SIZE);
+  if (sorted.length > HISTORY_PAGE_SIZE){
+    moreWrap.style.display = 'block';
+    moreBtn.textContent = historyExpanded ? 'Ver menos' : 'Ver más (' + (sorted.length - HISTORY_PAGE_SIZE) + ' más)';
+  } else {
+    moreWrap.style.display = 'none';
+  }
+  list.innerHTML = visible.map(e=>{
     const c = colorFor(e.category);
     return `
       <div class="entry">
@@ -611,6 +745,7 @@ function renderSettingsLists(){
 }
 
 function render(){
+  renderAvatar();
   renderToday();
   renderTotal();
   renderCategoryBreakdown();
@@ -665,6 +800,28 @@ document.getElementById('catManageToggle').addEventListener('click', ()=>{
 });
 document.getElementById('settingsToggleBtn').addEventListener('click', ()=>{
   document.getElementById('settingsPanel').classList.toggle('open');
+});
+
+document.getElementById('profileToggleBtn').addEventListener('click', ()=>{
+  document.getElementById('profilePanel').classList.toggle('open');
+});
+
+document.getElementById('saveNameBtn').addEventListener('click', async ()=>{
+  await saveDisplayName();
+});
+
+document.getElementById('avatarCircle').addEventListener('click', ()=>{
+  document.getElementById('avatarInput').click();
+});
+
+document.getElementById('avatarInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if (file) await uploadAvatar(file);
+});
+
+document.getElementById('historyMoreBtn').addEventListener('click', ()=>{
+  historyExpanded = !historyExpanded;
+  renderHistory();
 });
 
 document.getElementById('addCategoryBtn').addEventListener('click', async ()=>{

@@ -103,13 +103,13 @@
   .amount-field .cur{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:14px;pointer-events:none;}
   .amount-field input{padding-left:26px;}
 
-  .today-pill{
-    display:inline-flex;align-items:center;gap:7px;
-    font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);
-    background:var(--sunken);border:1px solid var(--line);
-    padding:9px 12px;border-radius:7px;
+  .date-input{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;
+    font-family:'IBM Plex Mono',monospace;font-size:14px;
+    background:var(--sunken);color:var(--ink);
   }
-  .today-pill strong{color:var(--ink);font-weight:600;}
+  .date-input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .date-input::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer;}
 
   .chip-row{display:flex;flex-wrap:wrap;gap:7px;}
   .chip{padding:6px 12px;border-radius:5px;font-size:12.5px;font-weight:700;border:1.5px solid transparent;background:var(--sunken);color:var(--muted);}
@@ -197,7 +197,7 @@
 
       <div class="field">
         <label>Fecha</label>
-        <div class="today-pill" id="todayPill">📅 <strong>Hoy</strong></div>
+        <input type="date" id="dateInput" class="date-input">
       </div>
 
       <div class="field">
@@ -404,7 +404,11 @@ async function persistAll(){
 function renderToday(){
   document.getElementById('todaySub').textContent =
     new Date(todayStr + 'T00:00:00').toLocaleDateString('es-MX', {weekday:'long', day:'numeric', month:'long'});
-  document.getElementById('todayPill').innerHTML = '📅 <strong>Hoy, ' + fmtDate(todayStr) + '</strong>';
+}
+
+function initDateInput(){
+  const input = document.getElementById('dateInput');
+  if (!input.value) input.value = todayStr;
 }
 
 function renderTotal(){
@@ -601,6 +605,8 @@ document.getElementById('nextMonth').addEventListener('click', ()=>{
 document.getElementById('addBtn').addEventListener('click', async ()=>{
   const amount = parseFloat(document.getElementById('amountInput').value);
   const note = document.getElementById('noteInput').value.trim();
+  const dateInput = document.getElementById('dateInput');
+  const chosenDate = dateInput.value || todayStr;
   if (!amount || amount <= 0){ document.getElementById('amountInput').focus(); return; }
 
   const entry = {
@@ -608,7 +614,7 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     person: selectedPerson,
     category: selectedCategory,
     amount: amount,
-    date: todayStr,
+    date: chosenDate,
     note: note
   };
   state.entries.push(entry);
@@ -616,7 +622,8 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
 
   document.getElementById('amountInput').value = '';
   document.getElementById('noteInput').value = '';
-  currentMonthKey = todayStr.slice(0,7);
+  dateInput.value = todayStr;
+  currentMonthKey = chosenDate.slice(0,7);
   render();
 });
 
@@ -664,6 +671,7 @@ document.getElementById('resetBtn').addEventListener('click', async ()=>{
   render();
 });
 
+initDateInput();
 loadAll();
 </script>
 </body>

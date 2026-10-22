@@ -329,6 +329,7 @@
         <p class="section-title">Histórico completo</p>
         <span class="count-label" id="countLabel"></span>
       </div>
+      <div class="chip-row" id="historyFilter" style="margin-bottom:12px;"></div>
       <div id="historyList"><div class="loading">Cargando...</div></div>
       <div style="margin-top:12px;text-align:center;" id="historyMoreWrap">
         <button class="inline-toggle" id="historyMoreBtn">Ver más</button>
@@ -415,6 +416,7 @@ const PALETTE = [
 let currentUser = null;
 let state = { categories: [...DEFAULT_CATEGORIES], entries: [], displayName: '' };
 let historyExpanded = false;
+let historyFilterCategory = null;
 const HISTORY_PAGE_SIZE = 10;
 let selectedCategory = state.categories[0];
 let currentMonthKey = new Date().toISOString().slice(0,7);
@@ -704,14 +706,34 @@ function renderCategoryPicker(){
   });
 }
 
+function renderHistoryFilter(){
+  if (historyFilterCategory && !state.categories.includes(historyFilterCategory)) historyFilterCategory = null;
+  const area = document.getElementById('historyFilter');
+  const chips = [{name:null,label:'Todas'}, ...state.categories.map(c=>({name:c,label:c}))];
+  area.innerHTML = chips.map(ch=>{
+    const active = historyFilterCategory === ch.name;
+    const c = ch.name ? colorFor(ch.name) : {fg:'var(--ink)', bg:'var(--line)'};
+    return `<button type="button" class="chip ${active?'active':''}" data-filter-cat="${ch.name||''}"
+      style="color:${c.fg}; background:${active?c.bg:'var(--sunken)'}">${ch.label}</button>`;
+  }).join('');
+  area.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      historyFilterCategory = btn.dataset.filterCat || null;
+      historyExpanded = false;
+      renderHistoryFilter();
+      renderHistory();
+    });
+  });
+}
+
 function renderHistory(){
-  const entries = state.entries;
+  const entries = historyFilterCategory ? state.entries.filter(e=>e.category === historyFilterCategory) : state.entries;
   const list = document.getElementById('historyList');
   const moreWrap = document.getElementById('historyMoreWrap');
   const moreBtn = document.getElementById('historyMoreBtn');
   document.getElementById('countLabel').textContent =
     entries.length ? entries.length + (entries.length===1 ? ' registro' : ' registros') : '';
-  if (!entries.length){ list.innerHTML = '<div class="empty-state">Todavía no hay registros.</div>'; moreWrap.style.display = 'none'; return; }
+  if (!entries.length){ list.innerHTML = '<div class="empty-state">No hay registros' + (historyFilterCategory ? ' en esta categoría.' : '.') + '</div>'; moreWrap.style.display = 'none'; return; }
   const sorted = [...entries].sort((a,b)=> b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)));
   const visible = historyExpanded ? sorted : sorted.slice(0, HISTORY_PAGE_SIZE);
   if (sorted.length > HISTORY_PAGE_SIZE){
@@ -765,6 +787,7 @@ function render(){
   renderCategoryBreakdown();
   renderQuincenaChart();
   renderCategoryPicker();
+  renderHistoryFilter();
   renderHistory();
   renderSettingsLists();
 }

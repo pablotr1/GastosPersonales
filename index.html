@@ -17,21 +17,21 @@
     --line:#2A2E3B;
     --accent:#FF6B4A;
     --accent-soft:#3A231C;
-    --title-color:#FFD24D;
+    --title-color:#FFFFFF;
     --scanline: rgba(255,255,255,.02);
     --radius:8px;
   }
   body.light-theme{
-    --bg:#F3EFE3;
-    --card:#FFFFFF;
-    --sunken:#ECE6D4;
-    --ink:#262319;
-    --muted:#8A8168;
-    --line:#D8CFB0;
+    --bg:#000000;
+    --card:#141414;
+    --sunken:#0A0A0A;
+    --ink:#FFFFFF;
+    --muted:#B7B7B7;
+    --line:#2E2E2E;
     --accent:#C94A28;
-    --accent-soft:#F1DED3;
-    --title-color:#A6452A;
-    --scanline: rgba(0,0,0,.025);
+    --accent-soft:#2E1C15;
+    --title-color:#FFFFFF;
+    --scanline: rgba(255,255,255,.02);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -83,11 +83,11 @@
   h1{
     font-family:'Source Serif 4',serif;
     font-weight:700;font-style:italic;
-    font-size:26px;margin:0 0 2px 0;
+    font-size:34px;margin:0 0 4px 0;
     color:var(--title-color);
     letter-spacing:-0.01em;
   }
-  .today-sub{font-size:12.5px;color:var(--muted);text-transform:capitalize;}
+  .today-sub{font-size:16px;color:var(--title-color);text-transform:capitalize;font-weight:500;}
 
   button{font-family:'Work Sans',sans-serif;cursor:pointer;border:none;}
   .status-line{font-size:12px;color:var(--muted);margin:6px 0 18px 0;min-height:14px;}
@@ -798,9 +798,11 @@ function renderCategoryPicker(){
 }
 
 function renderHistoryFilter(){
-  if (historyFilterCategory && !state.categories.includes(historyFilterCategory)) historyFilterCategory = null;
+  const usedCategories = state.categories.filter(c => state.entries.some(e => e.category === c));
+  if (historyFilterCategory && !usedCategories.includes(historyFilterCategory)) historyFilterCategory = null;
   const area = document.getElementById('historyFilter');
-  const chips = [{name:null,label:'Todas'}, ...state.categories.map(c=>({name:c,label:c}))];
+  if (usedCategories.length < 2){ area.innerHTML = ''; return; }
+  const chips = [{name:null,label:'Todas'}, ...usedCategories.map(c=>({name:c,label:c}))];
   area.innerHTML = chips.map(ch=>{
     const active = historyFilterCategory === ch.name;
     const c = ch.name ? colorFor(ch.name) : {fg:'var(--ink)', bg:'var(--line)'};

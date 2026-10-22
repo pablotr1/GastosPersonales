@@ -436,6 +436,10 @@ const SUPABASE_URL = 'https://eqenunehdeovtrohpexo.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_XjP0MQhtspBVUTG-D1PpDg_DVTbQmNh';
 /* ========================================================= */
 
+// Hay que leer esto ANTES de crear el cliente de Supabase: en cuanto se crea,
+// la librería procesa y limpia el token de la URL, y perderíamos la pista.
+const isPasswordRecovery = window.location.hash.includes('type=recovery');
+
 const sb = (!SUPABASE_URL.startsWith('PON_AQUI') && !SUPABASE_ANON_KEY.startsWith('PON_AQUI'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -999,23 +1003,32 @@ document.getElementById('resetBtn').addEventListener('click', async ()=>{
 
 initDateInput();
 
+function showResetPasswordScreen(){
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'block';
+  document.getElementById('authCard').style.display = 'none';
+  document.getElementById('resetCard').style.display = 'block';
+  try{ history.replaceState(null, '', window.location.pathname + window.location.search); }catch(e){}
+}
+
 (async function init(){
   if (!sb){
     setAuthError('Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en el código.');
     return;
   }
 
+  // Respaldo: si el evento llega tarde, igual mostramos la pantalla de reinicio.
   sb.auth.onAuthStateChange((event)=>{
-    if (event === 'PASSWORD_RECOVERY'){
-      document.getElementById('appScreen').style.display = 'none';
-      document.getElementById('authScreen').style.display = 'block';
-      document.getElementById('authCard').style.display = 'none';
-      document.getElementById('resetCard').style.display = 'block';
-    }
+    if (event === 'PASSWORD_RECOVERY') showResetPasswordScreen();
   });
 
+  if (isPasswordRecovery){
+    showResetPasswordScreen();
+    return; // No autologueamos aunque ya exista una sesión temporal de recuperación.
+  }
+
   const { data } = await sb.auth.getSession();
-  if (data.session && !window.location.hash.includes('type=recovery')){
+  if (data.session){
     await onLoggedIn(data.session.user);
   }
 })();
